@@ -4,140 +4,290 @@ const btnVerFavoritos = document.getElementById('btn-favoritos');
 const selectCategoria = document.getElementById('select-categoria');
 const selectOrdenacao = document.getElementById('select-ordenacao');
 
+const containerCarrinho = document.getElementById('itens-carrinho');
+const displayTotal = document.getElementById('total-carrinho');
+const gavetaCarrinho = document.getElementById('gavetaCarrinho');
+
 let todosOsProdutos = [];
 let mostrandoApenasFavoritos = false;
 
+function formatarPreco(valor) {
+    return Number(valor).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+}
+
+function escaparHTML(valor) {
+    return String(valor)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+function exibirMensagemProdutos(mensagem, classe = 'empty-products') {
+    containerProdutos.innerHTML = `
+        <div class="col-12">
+            <p class="${classe}">${mensagem}</p>
+        </div>
+    `;
+}
+
 function exibirCards(produtos) {
     containerProdutos.innerHTML = '';
-    const favoritos = getFavoritos(); 
 
-    produtos.forEach(produto => {
+    if (produtos.length === 0) {
+        exibirMensagemProdutos('Nenhum produto encontrado.');
+        return;
+    }
+
+    const favoritos = getFavoritos();
+
+    const cardsHTML = produtos.map(produto => {
         const isFavorito = favoritos.includes(produto.id);
-        const classeBotao = isFavorito ? 'btn-warning' : 'btn-outline-warning';
-        const textoBotao = isFavorito ? '⭐' : '⭐';
 
-        const cardHTML = `
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="card h-100 shadow-sm">
-                    <img src="${produto.thumbnail}" class="card-img-top" alt="${produto.title}" style="height: 200px; object-fit: contain; padding: 10px;">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">${produto.title}</h5>
-                        <p class="text-muted small mb-1">${produto.category}</p>
-                        <p class="card-text fw-bold text-success fs-4 mb-3">R$ ${produto.price}</p>
-                        
-                        <div class="d-flex flex-column gap-2 mt-auto border-top pt-3">
-                            <button class="btn btn-success w-100 fw-bold btn-adicionar-carrinho" data-id="${produto.id}">
+        const classeFavorito = isFavorito ? 'ativo' : '';
+
+        return `
+            <div class="col-12 col-md-6 col-lg-4 produto-col">
+                <article class="produto-card">
+
+                    <div class="produto-image-wrapper">
+                        <img 
+                            src="${escaparHTML(produto.thumbnail)}" 
+                            alt="${escaparHTML(produto.title)}" 
+                            class="produto-image"
+                        >
+                    </div>
+
+                    <div class="produto-card-body">
+                        <h5 class="produto-title">
+                            ${escaparHTML(produto.title)}
+                        </h5>
+
+                        <p class="produto-category">
+                            ${escaparHTML(produto.category)}
+                        </p>
+
+                        <p class="produto-price">
+                            ${formatarPreco(produto.price)}
+                        </p>
+
+                        <div class="produto-actions">
+                            <button 
+                                class="btn-card btn-add-cart btn-adicionar-carrinho" 
+                                data-id="${produto.id}"
+                            >
                                 🛒 Adicionar ao Carrinho
                             </button>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-info text-white flex-grow-1 btn-detalhes" data-id="${produto.id}">
+
+                            <div class="produto-actions-row">
+                                <button 
+                                    class="btn-card btn-details btn-detalhes" 
+                                    data-id="${produto.id}"
+                                >
                                     🔍 Detalhes
                                 </button>
-                                <button class="btn ${classeBotao} btn-favoritar" data-id="${produto.id}" title="Favoritar">
-                                    ${textoBotao}
+
+                                <button 
+                                    class="btn-card btn-favorite btn-favoritar ${classeFavorito}" 
+                                    data-id="${produto.id}" 
+                                    title="Favoritar"
+                                >
+                                    ⭐
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
+
+                </article>
             </div>
         `;
-        
-        containerProdutos.innerHTML += cardHTML;
-    });
+    }).join('');
+
+    containerProdutos.innerHTML = cardsHTML;
 }
 
 function atualizarGavetaCarrinho() {
     const carrinho = getCarrinho();
-    const containerCarrinho = document.getElementById('itens-carrinho');
-    const displayTotal = document.getElementById('total-carrinho');
-    
+
     containerCarrinho.innerHTML = '';
+
     let valorTotal = 0;
 
     if (carrinho.length === 0) {
-        containerCarrinho.innerHTML = '<p class="text-muted text-center mt-5">Seu carrinho está vazio.</p>';
-        displayTotal.textContent = 'R$ 0.00';
+        containerCarrinho.innerHTML = `
+            <p class="empty-cart">Seu carrinho está vazio.</p>
+        `;
+
+        displayTotal.textContent = formatarPreco(0);
         return;
     }
 
-    carrinho.forEach(itemCart => {
-        const produtoInfo = todosOsProdutos.find(p => p.id === itemCart.id);
-        
-        if (produtoInfo) {
-            const subtotal = produtoInfo.price * itemCart.quantidade;
-            valorTotal += subtotal;
+    const itensHTML = carrinho.map(itemCart => {
+        const produtoInfo = todosOsProdutos.find(produto => produto.id === itemCart.id);
 
-            const itemHTML = `
-                <div class="d-flex align-items-center mb-3 border-bottom pb-3">
-                    <img src="${produtoInfo.thumbnail}" style="width: 50px; height: 50px; object-fit: contain;" class="me-2">
-                    <div class="flex-grow-1">
-                        <h6 class="mb-0 text-truncate" style="max-width: 140px;">${produtoInfo.title}</h6>
-                        <small class="text-success fw-bold">R$ ${produtoInfo.price.toFixed(2)}</small>
-                        
-                        <!-- Controles de Quantidade -->
-                        <div class="d-flex align-items-center mt-1">
-                            <button class="btn btn-sm btn-outline-secondary py-0 px-2 btn-diminuir" data-id="${itemCart.id}">-</button>
-                            <span class="mx-2 fw-bold">${itemCart.quantidade}</span>
-                            <button class="btn btn-sm btn-outline-secondary py-0 px-2 btn-aumentar" data-id="${itemCart.id}">+</button>
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        <button class="btn btn-sm text-danger btn-remover-carrinho mb-2" data-id="${itemCart.id}">🗑️</button>
-                        <div class="small fw-bold text-muted">R$ ${subtotal.toFixed(2)}</div>
+        if (!produtoInfo) {
+            return '';
+        }
+
+        const subtotal = produtoInfo.price * itemCart.quantidade;
+        valorTotal += subtotal;
+
+        return `
+            <div class="cart-item">
+
+                <img 
+                    src="${escaparHTML(produtoInfo.thumbnail)}" 
+                    alt="${escaparHTML(produtoInfo.title)}" 
+                    class="cart-product-image"
+                >
+
+                <div class="cart-product-content">
+                    <h6 class="cart-product-title">
+                        ${escaparHTML(produtoInfo.title)}
+                    </h6>
+
+                    <small class="cart-product-price">
+                        ${formatarPreco(produtoInfo.price)}
+                    </small>
+
+                    <div class="quantity-controls">
+                        <button 
+                            class="btn-quantity btn-diminuir" 
+                            data-id="${itemCart.id}"
+                        >
+                            -
+                        </button>
+
+                        <span class="quantity-number">
+                            ${itemCart.quantidade}
+                        </span>
+
+                        <button 
+                            class="btn-quantity btn-aumentar" 
+                            data-id="${itemCart.id}"
+                        >
+                            +
+                        </button>
                     </div>
                 </div>
-            `;
-            containerCarrinho.innerHTML += itemHTML;
-        }
-    });
 
-    displayTotal.textContent = `R$ ${valorTotal.toFixed(2)}`;
+                <div class="cart-item-right">
+                    <button 
+                        class="btn-remove-cart btn-remover-carrinho" 
+                        data-id="${itemCart.id}"
+                        title="Remover do carrinho"
+                    >
+                        🗑️
+                    </button>
+
+                    <div class="cart-subtotal">
+                        ${formatarPreco(subtotal)}
+                    </div>
+                </div>
+
+            </div>
+        `;
+    }).join('');
+
+    containerCarrinho.innerHTML = itensHTML;
+    displayTotal.textContent = formatarPreco(valorTotal);
 }
 
 function abrirModalDetalhes(id) {
-    const produto = todosOsProdutos.find(p => p.id === id);
-    if (produto) {
-        document.getElementById('modalTitulo').textContent = produto.title;
-        document.getElementById('modalImagem').src = produto.thumbnail;
-        document.getElementById('modalDescricao').textContent = produto.description;
-        document.getElementById('modalMarca').textContent = produto.brand || 'Marca não informada';
-        document.getElementById('modalAvaliacao').textContent = `⭐ ${produto.rating}`;
+    const produto = todosOsProdutos.find(produto => produto.id === id);
 
-        const modal = new bootstrap.Modal(document.getElementById('modalProduto'));
-        modal.show();
+    if (!produto) {
+        return;
     }
+
+    document.getElementById('modalTitulo').textContent = produto.title;
+    document.getElementById('modalImagem').src = produto.thumbnail;
+    document.getElementById('modalImagem').alt = produto.title;
+    document.getElementById('modalDescricao').textContent = produto.description;
+    document.getElementById('modalMarca').textContent = produto.brand || 'Marca não informada';
+    document.getElementById('modalAvaliacao').textContent = `⭐ ${produto.rating}`;
+
+    const modal = new bootstrap.Modal(document.getElementById('modalProduto'));
+    modal.show();
+}
+
+function filtrarPorBusca(produtos, textoBuscado) {
+    if (!textoBuscado) {
+        return produtos;
+    }
+
+    return produtos.filter(produto => {
+        const titulo = produto.title.toLowerCase();
+        return titulo.includes(textoBuscado);
+    });
+}
+
+function filtrarPorCategoria(produtos, categoriaSelecionada) {
+    if (categoriaSelecionada === 'todas') {
+        return produtos;
+    }
+
+    return produtos.filter(produto => produto.category === categoriaSelecionada);
+}
+
+function filtrarPorFavoritos(produtos) {
+    if (!mostrandoApenasFavoritos) {
+        return produtos;
+    }
+
+    const favoritosIds = getFavoritos();
+
+    return produtos.filter(produto => favoritosIds.includes(produto.id));
+}
+
+function ordenarProdutos(produtos, tipoOrdenacao) {
+    const produtosOrdenados = [...produtos];
+
+    if (tipoOrdenacao === 'menor-preco') {
+        produtosOrdenados.sort((a, b) => a.price - b.price);
+    }
+
+    if (tipoOrdenacao === 'maior-preco') {
+        produtosOrdenados.sort((a, b) => b.price - a.price);
+    }
+
+    return produtosOrdenados;
 }
 
 function atualizarTela() {
-    const textoBuscado = inputBusca.value.toLowerCase();
+    const textoBuscado = inputBusca.value.toLowerCase().trim();
     const categoriaSelecionada = selectCategoria.value;
     const ordenacaoSelecionada = selectOrdenacao.value;
-    
-    let produtosParaExibir = todosOsProdutos.filter(produto => 
-        produto.title.toLowerCase().includes(textoBuscado)
-    );
 
-    if (categoriaSelecionada !== 'todas') {
-        produtosParaExibir = produtosParaExibir.filter(produto => produto.category === categoriaSelecionada);
-    }
+    let produtosParaExibir = [...todosOsProdutos];
 
-    if (mostrandoApenasFavoritos) {
-        const favoritosIds = getFavoritos();
-        produtosParaExibir = produtosParaExibir.filter(produto => favoritosIds.includes(produto.id));
-    }
+    produtosParaExibir = filtrarPorBusca(produtosParaExibir, textoBuscado);
+    produtosParaExibir = filtrarPorCategoria(produtosParaExibir, categoriaSelecionada);
+    produtosParaExibir = filtrarPorFavoritos(produtosParaExibir);
+    produtosParaExibir = ordenarProdutos(produtosParaExibir, ordenacaoSelecionada);
 
-    if (ordenacaoSelecionada === 'menor-preco') {
-        produtosParaExibir.sort((a, b) => a.price - b.price);
-    } else if (ordenacaoSelecionada === 'maior-preco') {
-        produtosParaExibir.sort((a, b) => b.price - a.price);
-    }
-    
     exibirCards(produtosParaExibir);
 }
 
+function atualizarBotaoFavoritos() {
+    btnVerFavoritos.classList.toggle('ativo', mostrandoApenasFavoritos);
+
+    if (mostrandoApenasFavoritos) {
+        btnVerFavoritos.textContent = '📦 Ver Todos';
+    } else {
+        btnVerFavoritos.textContent = '⭐ Favoritos';
+    }
+}
+
 async function iniciarLoja() {
+    exibirMensagemProdutos('Carregando produtos...', 'loading-products');
+
     todosOsProdutos = await carregarProdutos();
+
     atualizarTela();
     atualizarGavetaCarrinho();
 }
@@ -147,62 +297,80 @@ selectCategoria.addEventListener('change', atualizarTela);
 selectOrdenacao.addEventListener('change', atualizarTela);
 
 containerProdutos.addEventListener('click', (evento) => {
-    
     const botaoFavoritar = evento.target.closest('.btn-favoritar');
+
     if (botaoFavoritar) {
-        toggleFavorito(Number(botaoFavoritar.dataset.id)); 
-        atualizarTela(); 
-        return; 
+        const idProduto = Number(botaoFavoritar.dataset.id);
+
+        toggleFavorito(idProduto);
+        atualizarTela();
+
+        return;
     }
 
     const botaoDetalhes = evento.target.closest('.btn-detalhes');
+
     if (botaoDetalhes) {
-        abrirModalDetalhes(Number(botaoDetalhes.dataset.id));
+        const idProduto = Number(botaoDetalhes.dataset.id);
+
+        abrirModalDetalhes(idProduto);
+
         return;
     }
 
     const botaoCarrinho = evento.target.closest('.btn-adicionar-carrinho');
+
     if (botaoCarrinho) {
-        adicionarAoCarrinho(Number(botaoCarrinho.dataset.id));
+        const idProduto = Number(botaoCarrinho.dataset.id);
+
+        adicionarAoCarrinho(idProduto);
         atualizarGavetaCarrinho();
-        
+
         const textoOriginal = botaoCarrinho.textContent;
+
         botaoCarrinho.textContent = '✅ Adicionado!';
-        botaoCarrinho.classList.replace('btn-success', 'btn-dark');
+        botaoCarrinho.classList.add('adicionado');
+
         setTimeout(() => {
             botaoCarrinho.textContent = textoOriginal;
-            botaoCarrinho.classList.replace('btn-dark', 'btn-success');
+            botaoCarrinho.classList.remove('adicionado');
         }, 1000);
     }
 });
 
-document.getElementById('gavetaCarrinho').addEventListener('click', (evento) => {
-    const id = Number(evento.target.dataset.id);
-    if (!id) return;
+gavetaCarrinho.addEventListener('click', (evento) => {
+    const botaoRemover = evento.target.closest('.btn-remover-carrinho');
+    const botaoAumentar = evento.target.closest('.btn-aumentar');
+    const botaoDiminuir = evento.target.closest('.btn-diminuir');
 
-    if (evento.target.closest('.btn-remover-carrinho')) {
-        removerDoCarrinho(id);
-    } else if (evento.target.closest('.btn-aumentar')) {
-        alterarQuantidade(id, 1);
-    } else if (evento.target.closest('.btn-diminuir')) {
-        alterarQuantidade(id, -1);
+    const botaoClicado = botaoRemover || botaoAumentar || botaoDiminuir;
+
+    if (!botaoClicado) {
+        return;
     }
-    
+
+    const idProduto = Number(botaoClicado.dataset.id);
+
+    if (botaoRemover) {
+        removerDoCarrinho(idProduto);
+    }
+
+    if (botaoAumentar) {
+        alterarQuantidade(idProduto, 1);
+    }
+
+    if (botaoDiminuir) {
+        alterarQuantidade(idProduto, -1);
+    }
+
     atualizarGavetaCarrinho();
 });
 
 btnVerFavoritos.addEventListener('click', () => {
     mostrandoApenasFavoritos = !mostrandoApenasFavoritos;
-    
-    if (mostrandoApenasFavoritos) {
-        btnVerFavoritos.classList.replace('btn-outline-warning', 'btn-warning');
-        btnVerFavoritos.textContent = '📦 Ver Todos';
-    } else {
-        btnVerFavoritos.classList.replace('btn-warning', 'btn-outline-warning');
-        btnVerFavoritos.textContent = '⭐ Favoritos';
-    }
-    
+
+    atualizarBotaoFavoritos();
     atualizarTela();
 });
 
-window.onload = iniciarLoja;
+document.addEventListener('DOMContentLoaded', iniciarLoja);

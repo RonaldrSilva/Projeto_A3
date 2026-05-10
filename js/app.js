@@ -55,17 +55,59 @@ function filtrarPorBusca(
 
     return produtos.filter(produto => {
 
+        // Sinônimos de categorias
+        const aliasesCategorias = {
+            smartphones: [
+                'celular',
+                'iphone',
+                'android'
+            ],
+
+            laptops: [
+                'notebook',
+                'pc',
+                'computador',
+                'macbook',
+                'ultrabook',
+                'chromebook',
+                'gaming',
+                'workstation',
+                '2 em 1',
+                'híbrido'
+            ],
+
+            tablets: [
+                'ipad',
+                'tablet',
+                'leitor de ebooks'
+            ],
+
+            'mobile-accessories': [
+                'fone',
+                'carregador',
+                'acessorio'
+            ]
+        };
+
+        // Busca aliases da categoria atual
+        const aliases =
+            aliasesCategorias[produto.category]
+            || [];
+
+        // Junta tudo que pode ser pesquisado
         const termosDoProduto = [
             produto.title,
             produto.brand,
             produto.category,
-            formatarCategoria(produto.category)
+            formatarCategoria(produto.category),
+            ...aliases
         ]
             .filter(Boolean)
             .map(normalizarTexto);
 
         return termosDoProduto.some(
-            termo => termo.includes(buscaNormalizada)
+            termo =>
+                termo.includes(buscaNormalizada)
         );
     });
 }

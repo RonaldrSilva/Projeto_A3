@@ -6,21 +6,31 @@ async function carregarProdutos() {
         'mobile-accessories'
     ];
 
+    const requisicoes = categoriasTech.map(async (categoria) => {
+        const resposta = await fetch(`https://dummyjson.com/products/category/${categoria}`);
+
+        if (!resposta.ok) {
+            throw new Error(`Erro ao carregar categoria: ${categoria}`);
+        }
+
+        const dados = await resposta.json();
+        return dados.products || [];
+    });
+
     try {
-        const requisicoes = categoriasTech.map(async (categoria) => {
-            const resposta = await fetch(`https://dummyjson.com/products/category/${categoria}`);
+        const resultados = await Promise.allSettled(requisicoes);
 
-            if (!resposta.ok) {
-                throw new Error(`Erro ao carregar categoria: ${categoria}`);
-            }
+        const produtosCarregados = resultados
+            .filter(resultado => resultado.status === 'fulfilled')
+            .flatMap(resultado => resultado.value);
 
-            const dados = await resposta.json();
-            return dados.products || [];
-        });
+        const houveFalha = resultados.some(resultado => resultado.status === 'rejected');
 
-        const listasDeProdutos = await Promise.all(requisicoes);
+        if (houveFalha) {
+            console.warn('Algumas categorias não puderam ser carregadas.');
+        }
 
-        return listasDeProdutos.flat();
+        return produtosCarregados;
 
     } catch (erro) {
         console.error('Erro ao buscar os produtos da API:', erro);

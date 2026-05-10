@@ -1,15 +1,40 @@
 const containerProdutos = document.getElementById('lista-produtos');
 const inputBusca = document.getElementById('input-busca');
 const btnVerFavoritos = document.getElementById('btn-favoritos');
+const btnTema = document.getElementById('btn-tema');
 const selectCategoria = document.getElementById('select-categoria');
 const selectOrdenacao = document.getElementById('select-ordenacao');
 
 const containerCarrinho = document.getElementById('itens-carrinho');
 const displayTotal = document.getElementById('total-carrinho');
+const contadorCarrinho = document.getElementById('contador-carrinho');
 const gavetaCarrinho = document.getElementById('gavetaCarrinho');
+
+const modalImagem = document.getElementById('modalImagem');
+const btnImagemAnterior = document.getElementById('btn-imagem-anterior');
+const btnProximaImagem = document.getElementById('btn-proxima-imagem');
+const contadorImagens = document.getElementById('contador-imagens');
+
+const toastElemento = document.getElementById('toast-notificacao');
+const toastTitulo = document.getElementById('toast-titulo');
+const toastMensagem = document.getElementById('toast-mensagem');
+
+const nomesCategorias = {
+    laptops: 'Notebooks',
+    smartphones: 'Smartphones',
+    tablets: 'Tablets',
+    'mobile-accessories': 'Acessórios Mobile'
+};
 
 let todosOsProdutos = [];
 let mostrandoApenasFavoritos = false;
+
+let imagensModal = [];
+let indiceImagemAtual = 0;
+
+/* =========================
+   FUNÇÕES UTILITÁRIAS
+========================= */
 
 function formatarPreco(valor) {
     return Number(valor).toLocaleString('pt-BR', {
@@ -27,6 +52,18 @@ function escaparHTML(valor) {
         .replaceAll("'", '&#039;');
 }
 
+function normalizarTexto(valor = '') {
+    return String(valor)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
+function formatarCategoria(categoria) {
+    return nomesCategorias[categoria] || categoria;
+}
+
 function exibirMensagemProdutos(mensagem, classe = 'empty-products') {
     containerProdutos.innerHTML = `
         <div class="col-12">
@@ -34,6 +71,52 @@ function exibirMensagemProdutos(mensagem, classe = 'empty-products') {
         </div>
     `;
 }
+
+function mostrarToast(titulo, mensagem) {
+    toastTitulo.textContent = titulo;
+    toastMensagem.textContent = mensagem;
+
+    const toast = bootstrap.Toast.getOrCreateInstance(toastElemento, {
+        delay: 1800
+    });
+
+    toast.show();
+}
+
+/* =========================
+   SKELETON LOADING
+========================= */
+
+function exibirSkeletons(quantidade = 6) {
+    const skeletonsHTML = Array.from({ length: quantidade }, () => `
+        <div class="col-12 col-md-6 col-lg-4 produto-col">
+            <article class="produto-card skeleton-card">
+                <div class="skeleton skeleton-image"></div>
+
+                <div class="produto-card-body">
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-category"></div>
+                    <div class="skeleton skeleton-price"></div>
+
+                    <div class="produto-actions">
+                        <div class="skeleton skeleton-button"></div>
+
+                        <div class="produto-actions-row">
+                            <div class="skeleton skeleton-button skeleton-button-small"></div>
+                            <div class="skeleton skeleton-favorite"></div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    `).join('');
+
+    containerProdutos.innerHTML = skeletonsHTML;
+}
+
+/* =========================
+   PRODUTOS
+========================= */
 
 function exibirCards(produtos) {
     containerProdutos.innerHTML = '';
@@ -47,7 +130,6 @@ function exibirCards(produtos) {
 
     const cardsHTML = produtos.map(produto => {
         const isFavorito = favoritos.includes(produto.id);
-
         const classeFavorito = isFavorito ? 'ativo' : '';
 
         return `
@@ -68,7 +150,7 @@ function exibirCards(produtos) {
                         </h5>
 
                         <p class="produto-category">
-                            ${escaparHTML(produto.category)}
+                            ${escaparHTML(formatarCategoria(produto.category))}
                         </p>
 
                         <p class="produto-price">
@@ -110,6 +192,21 @@ function exibirCards(produtos) {
     containerProdutos.innerHTML = cardsHTML;
 }
 
+/* =========================
+   CARRINHO
+========================= */
+
+function atualizarContadorCarrinho() {
+    const carrinho = getCarrinho();
+
+    const quantidadeTotal = carrinho.reduce((total, item) => {
+        return total + item.quantidade;
+    }, 0);
+
+    contadorCarrinho.textContent = quantidadeTotal;
+    contadorCarrinho.classList.toggle('d-none', quantidadeTotal === 0);
+}
+
 function atualizarGavetaCarrinho() {
     const carrinho = getCarrinho();
 
@@ -123,6 +220,7 @@ function atualizarGavetaCarrinho() {
         `;
 
         displayTotal.textContent = formatarPreco(0);
+        atualizarContadorCarrinho();
         return;
     }
 
@@ -195,6 +293,42 @@ function atualizarGavetaCarrinho() {
 
     containerCarrinho.innerHTML = itensHTML;
     displayTotal.textContent = formatarPreco(valorTotal);
+    atualizarContadorCarrinho();
+}
+
+/* =========================
+   MODAL / CARROSSEL
+========================= */
+
+function atualizarImagemModal() {
+    if (imagensModal.length === 0) {
+        return;
+    }
+
+    modalImagem.src = imagensModal[indiceImagemAtual];
+    contadorImagens.textContent = `${indiceImagemAtual + 1} / ${imagensModal.length}`;
+
+    const possuiMaisDeUmaImagem = imagensModal.length > 1;
+
+    btnImagemAnterior.classList.toggle('d-none', !possuiMaisDeUmaImagem);
+    btnProximaImagem.classList.toggle('d-none', !possuiMaisDeUmaImagem);
+    contadorImagens.classList.toggle('d-none', !possuiMaisDeUmaImagem);
+}
+
+function mostrarImagemAnterior() {
+    indiceImagemAtual = indiceImagemAtual === 0
+        ? imagensModal.length - 1
+        : indiceImagemAtual - 1;
+
+    atualizarImagemModal();
+}
+
+function mostrarProximaImagem() {
+    indiceImagemAtual = indiceImagemAtual === imagensModal.length - 1
+        ? 0
+        : indiceImagemAtual + 1;
+
+    atualizarImagemModal();
 }
 
 function abrirModalDetalhes(id) {
@@ -204,25 +338,47 @@ function abrirModalDetalhes(id) {
         return;
     }
 
+    imagensModal = Array.isArray(produto.images) && produto.images.length > 0
+        ? produto.images
+        : [produto.thumbnail];
+
+    indiceImagemAtual = 0;
+
     document.getElementById('modalTitulo').textContent = produto.title;
-    document.getElementById('modalImagem').src = produto.thumbnail;
-    document.getElementById('modalImagem').alt = produto.title;
     document.getElementById('modalDescricao').textContent = produto.description;
     document.getElementById('modalMarca').textContent = produto.brand || 'Marca não informada';
     document.getElementById('modalAvaliacao').textContent = `⭐ ${produto.rating}`;
 
-    const modal = new bootstrap.Modal(document.getElementById('modalProduto'));
+    modalImagem.alt = produto.title;
+
+    atualizarImagemModal();
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalProduto'));
     modal.show();
 }
+
+/* =========================
+   FILTROS E BUSCA
+========================= */
 
 function filtrarPorBusca(produtos, textoBuscado) {
     if (!textoBuscado) {
         return produtos;
     }
 
+    const buscaNormalizada = normalizarTexto(textoBuscado);
+
     return produtos.filter(produto => {
-        const titulo = produto.title.toLowerCase();
-        return titulo.includes(textoBuscado);
+        const termosDoProduto = [
+            produto.title,
+            produto.brand,
+            produto.category,
+            formatarCategoria(produto.category)
+        ]
+            .filter(Boolean)
+            .map(normalizarTexto);
+
+        return termosDoProduto.some(termo => termo.includes(buscaNormalizada));
     });
 }
 
@@ -259,7 +415,7 @@ function ordenarProdutos(produtos, tipoOrdenacao) {
 }
 
 function atualizarTela() {
-    const textoBuscado = inputBusca.value.toLowerCase().trim();
+    const textoBuscado = inputBusca.value;
     const categoriaSelecionada = selectCategoria.value;
     const ordenacaoSelecionada = selectOrdenacao.value;
 
@@ -283,8 +439,33 @@ function atualizarBotaoFavoritos() {
     }
 }
 
+/* =========================
+   TEMA
+========================= */
+
+function aplicarTema(tema) {
+    const temaEscuroAtivo = tema === 'escuro';
+
+    document.body.classList.toggle('dark-mode', temaEscuroAtivo);
+    btnTema.textContent = temaEscuroAtivo ? '☀️' : '🌙';
+    btnTema.title = temaEscuroAtivo ? 'Ativar modo claro' : 'Ativar modo escuro';
+}
+
+function alternarTema() {
+    const temaAtual = document.body.classList.contains('dark-mode') ? 'escuro' : 'claro';
+    const novoTema = temaAtual === 'escuro' ? 'claro' : 'escuro';
+
+    salvarTema(novoTema);
+    aplicarTema(novoTema);
+}
+
+/* =========================
+   INICIALIZAÇÃO
+========================= */
+
 async function iniciarLoja() {
-    exibirMensagemProdutos('Carregando produtos...', 'loading-products');
+    aplicarTema(getTemaSalvo());
+    exibirSkeletons();
 
     todosOsProdutos = await carregarProdutos();
 
@@ -292,18 +473,33 @@ async function iniciarLoja() {
     atualizarGavetaCarrinho();
 }
 
+/* =========================
+   EVENTOS
+========================= */
+
 inputBusca.addEventListener('input', atualizarTela);
 selectCategoria.addEventListener('change', atualizarTela);
 selectOrdenacao.addEventListener('change', atualizarTela);
+btnTema.addEventListener('click', alternarTema);
+
+btnImagemAnterior.addEventListener('click', mostrarImagemAnterior);
+btnProximaImagem.addEventListener('click', mostrarProximaImagem);
 
 containerProdutos.addEventListener('click', (evento) => {
     const botaoFavoritar = evento.target.closest('.btn-favoritar');
 
     if (botaoFavoritar) {
         const idProduto = Number(botaoFavoritar.dataset.id);
+        const foiFavoritado = toggleFavorito(idProduto);
 
-        toggleFavorito(idProduto);
         atualizarTela();
+
+        mostrarToast(
+            'Favoritos',
+            foiFavoritado
+                ? 'Produto adicionado aos favoritos.'
+                : 'Produto removido dos favoritos.'
+        );
 
         return;
     }
@@ -325,6 +521,13 @@ containerProdutos.addEventListener('click', (evento) => {
 
         adicionarAoCarrinho(idProduto);
         atualizarGavetaCarrinho();
+
+        const produto = todosOsProdutos.find(item => item.id === idProduto);
+
+        mostrarToast(
+            'Carrinho',
+            `${produto?.title || 'Produto'} adicionado ao carrinho.`
+        );
 
         const textoOriginal = botaoCarrinho.textContent;
 

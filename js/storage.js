@@ -1,5 +1,6 @@
 const CHAVE_FAVORITOS = 'meusFavoritos';
 const CHAVE_CARRINHO = 'meuCarrinho';
+const CHAVE_TEMA = 'temaPreferido';
 
 function lerLocalStorage(chave, valorPadrao) {
     try {
@@ -22,6 +23,10 @@ function salvarLocalStorage(chave, valor) {
     localStorage.setItem(chave, JSON.stringify(valor));
 }
 
+/* =========================
+   FAVORITOS
+========================= */
+
 function getFavoritos() {
     return lerLocalStorage(CHAVE_FAVORITOS, []);
 }
@@ -34,12 +39,17 @@ function toggleFavorito(produtoId) {
     if (produtoJaEstaFavoritado) {
         const favoritosAtualizados = favoritos.filter(id => id !== produtoId);
         salvarLocalStorage(CHAVE_FAVORITOS, favoritosAtualizados);
-        return;
+        return false;
     }
 
     favoritos.push(produtoId);
     salvarLocalStorage(CHAVE_FAVORITOS, favoritos);
+    return true;
 }
+
+/* =========================
+   CARRINHO
+========================= */
 
 function getCarrinho() {
     return lerLocalStorage(CHAVE_CARRINHO, []);
@@ -87,4 +97,16 @@ function alterarQuantidade(produtoId, delta) {
     }
 
     salvarLocalStorage(CHAVE_CARRINHO, carrinho);
+}
+
+/* =========================
+   TEMA
+========================= */
+
+function getTemaSalvo() {
+    return lerLocalStorage(CHAVE_TEMA, 'claro');
+}
+
+function salvarTema(tema) {
+    salvarLocalStorage(CHAVE_TEMA, tema);
 }

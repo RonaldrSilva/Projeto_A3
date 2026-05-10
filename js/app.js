@@ -132,64 +132,93 @@ function exibirCards(produtos) {
         const isFavorito = favoritos.includes(produto.id);
         const classeFavorito = isFavorito ? 'ativo' : '';
 
-        return `
-            <div class="col-12 col-md-6 col-lg-4 produto-col">
-                <article class="produto-card">
+        const estrelas = gerarEstrelas(produto.rating);
+        const totalAvaliacoes = gerarQuantidadeAvaliacoes();
 
-                    <div class="produto-image-wrapper">
-                        <img 
-                            src="${escaparHTML(produto.thumbnail)}" 
-                            alt="${escaparHTML(produto.title)}" 
-                            class="produto-image"
-                        >
-                    </div>
+                return `
+                    <div class="col-12 col-md-6 col-lg-4 produto-col">
+                        <article class="produto-card">
 
-                    <div class="produto-card-body">
-                        <h5 class="produto-title">
-                            ${escaparHTML(produto.title)}
-                        </h5>
-
-                        <p class="produto-category">
-                            ${escaparHTML(formatarCategoria(produto.category))}
-                        </p>
-
-                        <p class="produto-price">
-                            ${formatarPreco(produto.price)}
-                        </p>
-
-                        <div class="produto-actions">
-                            <button 
-                                class="btn-card btn-add-cart btn-adicionar-carrinho" 
-                                data-id="${produto.id}"
-                            >
-                                🛒 Adicionar ao Carrinho
-                            </button>
-
-                            <div class="produto-actions-row">
-                                <button 
-                                    class="btn-card btn-details btn-detalhes" 
-                                    data-id="${produto.id}"
+                            <div class="produto-image-wrapper">
+                                <img 
+                                    src="${escaparHTML(produto.thumbnail)}" 
+                                    alt="${escaparHTML(produto.title)}" 
+                                    class="produto-image"
                                 >
-                                    🔍 Detalhes
-                                </button>
-
-                                <button 
-                                    class="btn-card btn-favorite btn-favoritar ${classeFavorito}" 
-                                    data-id="${produto.id}" 
-                                    title="Favoritar"
-                                >
-                                    ⭐
-                                </button>
                             </div>
-                        </div>
-                    </div>
 
-                </article>
-            </div>
-        `;
+                            <div class="produto-card-body">
+                                <h5 class="produto-title">
+                                    ${escaparHTML(produto.title)}
+                                </h5>
+
+                                <p class="produto-category">
+                                    ${escaparHTML(formatarCategoria(produto.category))}
+                                </p>
+
+                                <p class="produto-price">
+                                    ${formatarPreco(produto.price)}
+                                </p>
+
+                                <div class="produto-rating">
+                                    <span class="stars">
+                                        ${estrelas}
+                                    </span>
+
+                                    <span class="rating-count">
+                                        (${totalAvaliacoes} avaliações)
+                                    </span>
+                                </div>
+
+                                <div class="produto-actions">
+                                    <button 
+                                        class="btn-card btn-add-cart btn-adicionar-carrinho" 
+                                        data-id="${produto.id}"
+                                    >
+                                        🛒 Adicionar ao Carrinho
+                                    </button>
+
+                                    <div class="produto-actions-row">
+                                        <button 
+                                            class="btn-card btn-details btn-detalhes" 
+                                            data-id="${produto.id}"
+                                        >
+                                            🔍 Detalhes
+                                        </button>
+
+                                        <button 
+                                            class="btn-card btn-favorite btn-favoritar ${classeFavorito}" 
+                                            data-id="${produto.id}" 
+                                            title="Favoritar"
+                                        >
+                                            ⭐
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </article>
+                    </div>
+                `;
     }).join('');
 
     containerProdutos.innerHTML = cardsHTML;
+}
+
+function gerarEstrelas(avaliacao) {
+    const nota = Math.round(avaliacao);
+
+    let estrelas = '';
+
+    for (let i = 1; i <= 5; i++) {
+        estrelas += i <= nota ? '★' : '☆';
+    }
+
+    return estrelas;
+}
+
+function gerarQuantidadeAvaliacoes() {
+    return Math.floor(Math.random() * 500) + 20;
 }
 
 /* =========================

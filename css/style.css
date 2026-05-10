@@ -350,6 +350,26 @@ body.dark-mode .select-filter {
     padding: 40px 0;
 }
 
+.produto-rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    margin-bottom: 14px;
+}
+
+.stars {
+    color: #ffc107;
+    font-size: 18px;
+    letter-spacing: 1px;
+}
+
+.rating-count {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
 /* =========================
    SKELETON LOADING
 ========================= */
